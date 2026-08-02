@@ -48,6 +48,10 @@ def connect():
                 )
 
 
+                # ==============================
+                # RECEIVE IMAGE FROM ODOO
+                # ==============================
+
                 if data.get("type") == "image":
 
 
@@ -86,6 +90,52 @@ def connect():
                             "filename": filename
                         })
                     )
+
+
+
+                # ==============================
+                # SEND IMAGE TO GATEWAY
+                # ==============================
+
+                elif data.get("type") == "get_image":
+
+
+                    filename = os.path.basename(
+                        data["filename"]
+                    )
+
+
+                    filepath = os.path.join(
+                        SAVE_PATH,
+                        filename
+                    )
+
+
+                    if os.path.exists(filepath):
+
+
+                        print(
+                            "Sending image:",
+                            filepath
+                        )
+
+
+                        with open(filepath, "rb") as file:
+
+                            image_data = file.read()
+
+
+                        ws.send_bytes(
+                            image_data
+                        )
+
+
+                    else:
+
+                        print(
+                            "Image not found:",
+                            filepath
+                        )
 
 
         except Exception as e:
