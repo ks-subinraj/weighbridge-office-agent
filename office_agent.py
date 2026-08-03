@@ -10,6 +10,7 @@ SAVE_PATH = os.path.join(
     "WB_IMAGES"
 )
 
+
 SERVER = "wss://muscatrecycling.com/wb/ws/office"
 
 
@@ -26,7 +27,9 @@ def connect():
 
         try:
 
-            print("Connecting to gateway...")
+            print(
+                "Connecting to gateway..."
+            )
 
 
             ws = websocket.create_connection(
@@ -34,7 +37,10 @@ def connect():
             )
 
 
-            print("Connected to gateway")
+            print(
+                "Connected to gateway"
+            )
+
 
 
             while True:
@@ -54,9 +60,9 @@ def connect():
 
 
 
-                # ==================================
-                # SAVE IMAGE FROM ODOO
-                # ==================================
+                # =================================
+                # SAVE IMAGE
+                # =================================
 
                 if data.get("type") == "save_image":
 
@@ -77,7 +83,10 @@ def connect():
                     )
 
 
-                    with open(filepath, "wb") as f:
+                    with open(
+                        filepath,
+                        "wb"
+                    ) as f:
 
                         f.write(
                             image_data
@@ -90,19 +99,23 @@ def connect():
                     )
 
 
+
                     ws.send(
                         json.dumps({
-                            "type": "saved",
-                            "filename": filename
+
+                            "type":"saved",
+
+                            "filename":filename
+
                         })
                     )
 
 
 
 
-                # ==================================
-                # SEND IMAGE TO GATEWAY
-                # ==================================
+                # =================================
+                # SEND IMAGE
+                # =================================
 
                 elif data.get("type") == "get_image":
 
@@ -124,10 +137,14 @@ def connect():
                     )
 
 
+
                     if os.path.exists(filepath):
 
 
-                        with open(filepath, "rb") as f:
+                        with open(
+                            filepath,
+                            "rb"
+                        ) as f:
 
                             image_data = f.read()
 
@@ -136,9 +153,11 @@ def connect():
                         ws.send(
                             json.dumps({
 
-                                "type": "image_response",
+                                "type":
+                                    "image_response",
 
-                                "filename": filename,
+                                "filename":
+                                    filename,
 
                                 "image":
                                     base64.b64encode(
@@ -155,24 +174,29 @@ def connect():
                         )
 
 
+
                     else:
 
 
                         ws.send(
                             json.dumps({
 
-                                "type": "image_response",
+                                "type":
+                                    "image_response",
 
-                                "filename": filename,
+                                "filename":
+                                    filename,
 
-                                "image": None
+                                "image":
+                                    None
 
                             })
                         )
 
 
                         print(
-                            "Image not found"
+                            "Image missing:",
+                            filename
                         )
 
 
