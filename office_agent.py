@@ -19,6 +19,7 @@ os.makedirs(
 )
 
 
+
 def connect():
 
     while True:
@@ -27,14 +28,17 @@ def connect():
 
             print("Connecting to gateway...")
 
+
             ws = websocket.create_connection(
                 SERVER
             )
+
 
             print("Connected to gateway")
 
 
             while True:
+
 
                 message = ws.recv()
 
@@ -43,16 +47,18 @@ def connect():
                     break
 
 
+
                 data = json.loads(
                     message
                 )
 
 
-                # ==============================
-                # RECEIVE IMAGE FROM ODOO
-                # ==============================
 
-                if data.get("type") == "image":
+                # ==================================
+                # SAVE IMAGE FROM ODOO
+                # ==================================
+
+                if data.get("type") == "save_image":
 
 
                     filename = os.path.basename(
@@ -71,9 +77,9 @@ def connect():
                     )
 
 
-                    with open(filepath, "wb") as file:
+                    with open(filepath, "wb") as f:
 
-                        file.write(
+                        f.write(
                             image_data
                         )
 
@@ -86,16 +92,17 @@ def connect():
 
                     ws.send(
                         json.dumps({
-                            "status": "saved",
+                            "type": "saved",
                             "filename": filename
                         })
                     )
 
 
 
-                # ==============================
+
+                # ==================================
                 # SEND IMAGE TO GATEWAY
-                # ==============================
+                # ==================================
 
                 elif data.get("type") == "get_image":
 
@@ -111,39 +118,73 @@ def connect():
                     )
 
 
+                    print(
+                        "Image requested:",
+                        filepath
+                    )
+
+
                     if os.path.exists(filepath):
 
 
-                        print(
-                            "Sending image:",
-                            filepath
+                        with open(filepath, "rb") as f:
+
+                            image_data = f.read()
+
+
+
+                        ws.send(
+                            json.dumps({
+
+                                "type": "image_response",
+
+                                "filename": filename,
+
+                                "image":
+                                    base64.b64encode(
+                                        image_data
+                                    ).decode()
+
+                            })
                         )
 
 
-                        with open(filepath, "rb") as file:
-
-                            image_data = file.read()
-
-
-                        ws.send_bytes(
-                            image_data
+                        print(
+                            "Image sent:",
+                            filename
                         )
 
 
                     else:
 
-                        print(
-                            "Image not found:",
-                            filepath
+
+                        ws.send(
+                            json.dumps({
+
+                                "type": "image_response",
+
+                                "filename": filename,
+
+                                "image": None
+
+                            })
                         )
 
 
+                        print(
+                            "Image not found"
+                        )
+
+
+
         except Exception as e:
+
 
             print(
                 "Connection error:",
                 e
             )
+
 
 
         print(
@@ -152,6 +193,7 @@ def connect():
 
 
         time.sleep(5)
+
 
 
 
