@@ -8,7 +8,15 @@ import websockets
 
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+import logging
 
+logging.basicConfig(
+    filename="wb_agent.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+
+logger = logging.getLogger("wb_agent")
 
 
 # ==============================
@@ -36,8 +44,8 @@ DEVICE_ID = get_device_id()
 
 
 
-print(
-    "Device ID:",
+logger.info(
+    "Device ID:%s",
     DEVICE_ID
 )
 
@@ -71,15 +79,15 @@ latest_weight = {
 def find_serial():
 
 
-    print("Searching serial ports...")
+    logger.info("Searching serial ports...")
 
 
     for port in serial.tools.list_ports.comports():
 
         try:
 
-            print(
-                "Testing:",
+            logger.info(
+                "Testing:%s",
                 port.device
             )
 
@@ -114,8 +122,8 @@ def find_serial():
             if data:
 
 
-                print(
-                    "Weighbridge found:",
+                logger.info(
+                    "Weighbridge found:%s",
                     port.device
                 )
 
@@ -171,8 +179,8 @@ async def serial_reader():
                 if data:
 
 
-                    print(
-                        "RAW:",
+                    logger.info(
+                        "RAW:%s",
                         data
                     )
 
@@ -229,8 +237,8 @@ async def serial_reader():
         except Exception as e:
 
 
-            print(
-                "Serial error:",
+            logger.info(
+                "Serial error:%s",
                 e
             )
 
@@ -269,8 +277,8 @@ async def gateway_client():
         try:
 
 
-            print(
-                "Connecting:",
+            logger.info(
+                "Connecting:%s",
                 url
             )
 
@@ -287,7 +295,7 @@ async def gateway_client():
 
 
 
-                print(
+                logger.info(
                     "Gateway connected"
                 )
 
@@ -314,13 +322,13 @@ async def gateway_client():
         except Exception as e:
 
 
-            print(
-                "Gateway error:",
+            logger.info(
+                "Gateway error:%s",
                 e
             )
 
 
-            print(
+            logger.info(
                 "Retrying in 5 seconds..."
             )
 
@@ -346,14 +354,14 @@ async def lifespan(app: FastAPI):
 
 
 
-    print(
+    logger.info(
         "Starting Weighbridge Agent"
     )
 
 
 
-    print(
-        "Device:",
+    logger.info(
+        "Device:%s",
         DEVICE_ID
     )
 
@@ -366,7 +374,7 @@ async def lifespan(app: FastAPI):
     if ser:
 
 
-        print(
+        logger.info(
             "Serial connected"
         )
 
@@ -379,7 +387,7 @@ async def lifespan(app: FastAPI):
     else:
 
 
-        print(
+        logger.info(
             "No weighbridge found"
         )
 
@@ -445,13 +453,10 @@ if __name__ == "__main__":
 
     import uvicorn
 
-
     uvicorn.run(
-
         app,
-
         host="0.0.0.0",
-
-        port=9000
-
+        port=9000,
+        log_config=None,
+        access_log=False
     )

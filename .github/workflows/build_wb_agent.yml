@@ -34,7 +34,7 @@ jobs:
     - name: Build EXE
       working-directory: wb_agent
       run: |
-        pyinstaller --onefile --name wb_agent.exe wb_agent.py
+        pyinstaller --onefile --noconsole --name wb_agent.exe wb_agent.py
 
 
     - name: Upload EXE
