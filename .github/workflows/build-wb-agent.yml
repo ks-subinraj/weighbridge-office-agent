@@ -34,7 +34,7 @@ jobs:
     - name: Build EXE
       working-directory: wb_agent
       run: |
-        pyinstaller --onefile --noconsole --name wb_agent_misfa.exe wb_agent_with_lab.py
+        pyinstaller --onefile --noconsole --name wb_agent_misfa.exe misfa.py
 
 
     - name: Upload EXE
