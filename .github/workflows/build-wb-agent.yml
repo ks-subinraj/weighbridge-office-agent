@@ -1,44 +1,35 @@
-name: Build WB Agent EXE
+name: Build WB Agent EXE Misfa
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-
   build:
-
     runs-on: windows-latest
 
-
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
 
+      - name: Install dependencies
+        working-directory: office_agent/wb_agent
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.9"
+      - name: Build EXE
+        working-directory: office_agent/wb_agent
+        run: |
+          pyinstaller --onefile --noconsole --name wb_agent_misfa misfa.py
 
-
-    - name: Install dependencies
-      working-directory: wb_agent
-      run: |
-        pip install -r requirements.txt
-        pip install pyinstaller
-
-
-    - name: Build EXE
-      working-directory: wb_agent
-      run: |
-        pyinstaller --onefile --noconsole --name wb_agent_misfa.exe misfa.py
-
-
-    - name: Upload EXE
-      uses: actions/upload-artifact@v4
-      with:
-        name: wb_agent.exe
-        path: wb_agent/dist/wb_agent.exe
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: wb_agent_misfa
+          path: office_agent/wb_agent/dist/wb_agent_misfa.exe
