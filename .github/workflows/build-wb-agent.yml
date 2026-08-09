@@ -1,0 +1,44 @@
+name: Build WB Agent EXE
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  build:
+
+    runs-on: windows-latest
+
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.9"
+
+
+    - name: Install dependencies
+      working-directory: wb_agent
+      run: |
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+
+    - name: Build EXE
+      working-directory: wb_agent
+      run: |
+        pyinstaller --onefile --noconsole --name wb_agent_misfa.exe wb_agent_with_lab.py
+
+
+    - name: Upload EXE
+      uses: actions/upload-artifact@v4
+      with:
+        name: wb_agent.exe
+        path: wb_agent/dist/wb_agent.exe
