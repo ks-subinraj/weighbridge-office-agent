@@ -57,18 +57,14 @@ logger.info(
 
 ser = None
 
-
 latest_weight = {
-
     "device_id": DEVICE_ID,
-
     "weight": 0,
-
     "unit": "kg",
-
     "stable": False
-
 }
+
+weight_changed = asyncio.Event()
 
 
 
@@ -154,71 +150,87 @@ def find_serial():
 
 async def serial_reader():
 
+    global ser
     global latest_weight
-
 
     while True:
 
+        # ==============================
+        # CONNECT SERIAL
+        # ==============================
 
-        try:
+        if ser is None:
 
+            logger.info("Searching for weighbridge...")
+
+            ser = find_serial()
 
             if ser:
 
+                logger.info("Serial connected")
 
-                data = (
-                    ser.readline()
-                    .decode(
-                        "utf-8",
-                        errors="ignore"
-                    )
-                    .strip()
+            else:
+
+                await asyncio.sleep(5)
+                continue
+
+
+        # ==============================
+        # READ WEIGHT
+        # ==============================
+
+        try:
+
+            data = (
+                ser.readline()
+                .decode(
+                    "utf-8",
+                    errors="ignore"
+                )
+                .strip()
+            )
+
+
+            if data:
+
+                logger.info(
+                    "RAW:%s",
+                    data
                 )
 
 
-                if data:
+                parts = data.split(",")
 
 
-                    logger.info(
-                        "RAW:%s",
-                        data
-                    )
+                if len(parts) >= 4:
+
+                    try:
+
+                        new_weight = float(
+                            parts[2].strip()
+                        )
+
+                        new_unit = parts[3].strip()
 
 
-                    parts = data.split(",")
+                        # Only update when value changes
 
-
-
-                    #
-                    # Example:
-                    # ST,GS,12540,kg
-                    #
-
-
-                    if len(parts) >= 4:
-
-
-                        try:
-
+                        if (
+                            new_weight != latest_weight["weight"]
+                            or new_unit != latest_weight["unit"]
+                            or not latest_weight["stable"]
+                        ):
 
                             latest_weight = {
-
 
                                 "device_id":
                                 DEVICE_ID,
 
-
                                 "weight":
-                                float(
-                                    parts[2]
-                                    .strip()
-                                ),
-
+                                new_weight,
 
                                 "unit":
-                                parts[3]
-                                .strip(),
-
+                                new_unit,
 
                                 "stable":
                                 True
@@ -226,16 +238,17 @@ async def serial_reader():
                             }
 
 
+                            # Tell gateway there is a NEW value
 
-                        except Exception:
-
-                            pass
+                            weight_changed.set()
 
 
+                    except Exception:
+
+                        pass
 
 
         except Exception as e:
-
 
             logger.info(
                 "Serial error:%s",
@@ -243,12 +256,52 @@ async def serial_reader():
             )
 
 
+            # Close broken connection
 
-        await asyncio.sleep(
-            0.05
-        )
+            try:
+
+                ser.close()
+
+            except Exception:
+
+                pass
 
 
+            ser = None
+
+
+            # IMPORTANT:
+            # Do not broadcast the old value
+
+            latest_weight = {
+
+                "device_id":
+                DEVICE_ID,
+
+                "weight":
+                0,
+
+                "unit":
+                "kg",
+
+                "stable":
+                False
+
+            }
+
+
+            weight_changed.clear()
+
+
+            logger.info(
+                "Serial disconnected. Reconnecting..."
+            )
+
+
+            await asyncio.sleep(2)
+
+
+        await asyncio.sleep(0.05)
 
 
 
@@ -260,7 +313,6 @@ async def serial_reader():
 
 async def gateway_client():
 
-
     url = (
         GATEWAY_URL
         +
@@ -269,19 +321,16 @@ async def gateway_client():
         DEVICE_ID
     )
 
-
+    last_sent_weight = None
 
     while True:
 
-
         try:
-
 
             logger.info(
                 "Connecting:%s",
                 url
             )
-
 
             async with websockets.connect(
 
@@ -293,55 +342,53 @@ async def gateway_client():
 
             ) as websocket:
 
-
-
                 logger.info(
                     "Gateway connected"
                 )
 
-
-
                 while True:
 
+                    # Wait for a NEW weight
+                    await weight_changed.wait()
 
+                    # Clear event
+                    weight_changed.clear()
+
+                    # Capture current value
+                    weight = latest_weight.copy()
+
+                    # Do not send disconnected/invalid value
+                    if not weight["stable"]:
+                        continue
+
+                    # Do not send same weight again
+                    if weight["weight"] == last_sent_weight:
+                        continue
+
+                    # Send
                     await websocket.send(
-
-                        json.dumps(
-                            latest_weight
-                        )
-
+                        json.dumps(weight)
                     )
 
-
-                    await asyncio.sleep(
-                        0.5
+                    logger.info(
+                        "Broadcast:%s",
+                        weight
                     )
 
-
+                    last_sent_weight = weight["weight"]
 
         except Exception as e:
-
 
             logger.info(
                 "Gateway error:%s",
                 e
             )
 
-
             logger.info(
                 "Retrying in 5 seconds..."
             )
 
-
-            await asyncio.sleep(
-                5
-            )
-
-
-
-
-
-
+            await asyncio.sleep(5)
 
 # ==============================
 # FASTAPI STATUS
@@ -369,27 +416,21 @@ async def lifespan(app: FastAPI):
 
     ser = find_serial()
 
-
-
     if ser:
-
 
         logger.info(
             "Serial connected"
         )
 
-
-        asyncio.create_task(
-            serial_reader()
-        )
-
-
     else:
-
 
         logger.info(
             "No weighbridge found"
         )
+
+    asyncio.create_task(
+        serial_reader()
+    )
 
 
 
